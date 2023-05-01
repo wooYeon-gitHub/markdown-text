@@ -1,312 +1,115 @@
-#### 실행 컨텍스트가 뭐지?
+본격적으로 실행 컨텍스트를 살펴보기에 앞서 스택(stack)과 큐(queue)의 개념을 잠깐 살펴보겠습니다.
 
-**실행 컨텍스트(Execution context)**는 실행할 코드에 제공할 환경 정보들을 모아놓은 객체로, 자바스크립트의 동적 언어로서의 성격을 가장 잘 파악할 수 있는 개념입니다.
+**스택(stack)** 은 출입구가 하나뿐인 깊은 우물 같은 데이터 구조입니다. 비어있는 스택에 순서대로 데이터 `a, b, c, d`를 저장했다면 반대로 `d, c, b, a`의 순서로 꺼낼 수밖에 없습니다.
 
-> 자바스크립트는 어떤 실행 컨텍스트가 활성화되는 시점에 선언된 변수를 위로 끌어올리고(**호이스팅**), 외부 환경 정보를 구성하고, `this`값을 설정하는 등의 동작을 수행하는데, 이로인해 다른언어에서는 발견할 수 없는 특이한 현상들이 발견됩니다.
-
-#### **실행 컨텍스트 유형**
-
-JavaScript에는 세 가지 유형의 실행 컨텍스트가 있습니다.
-
-- **Global Execution Context**
-  이것은 기본 또는 기본 실행 컨텍스트입니다. 함수 내부에 없는 코드는 전역 실행 컨텍스트에 있습니다. 두 가지 작업을 수행합니다. 창 개체인 전역 개체(브라우저의 경우)를 만들고 의 값을 this전역 개체와 동일하게 설정합니다. 프로그램에는 하나의 전역 실행 컨텍스트만 있을 수 있습니다.
-- **Functional Execution Context**
-  함수가 호출될 때마다 해당 함수에 대한 새로운 실행 컨텍스트가 생성됩니다. 각 함수에는 자체 실행 컨텍스트가 있지만 함수가 호출되거나 호출될 때 생성됩니다. 함수 실행 컨텍스트는 얼마든지 있을 수 있습니다. 새 실행 컨텍스트가 생성될 때마다 이 문서의 뒷부분에서 설명할 정의된 순서로 일련의 단계를 거칩니다.
-- **Eval Function Execution Context**
-  함수 내에서 실행되는 코드 eval 도 고유한 실행 컨텍스트를 가지지만 eval 일반적으로 JavaScript 개발자가 사용하지 않으므로 여기서는 다루지 않겠습니다.
-
-#### Execution Stack
-
-다른 프로그래밍 언어에서 "호출 스택"이라고도 하는 실행 스택은 코드 실행 중에 생성되는 모든 실행 컨텍스트를 저장하는 데 사용되는 LIFO(Last in, First out) 구조의 스택입니다.
-
-JavaScript 엔진이 스크립트를 처음 발견하면 전역 실행 컨텍스트를 생성하고 현재 실행 스택으로 푸시합니다. 엔진이 함수 호출을 찾을 때마다 해당 함수에 대한 새 실행 컨텍스트를 만들고 스택 맨 위로 푸시합니다.
-
-엔진은 실행 컨텍스트가 스택의 맨 위에 있는 함수를 실행합니다. 이 함수가 완료되면 실행 스택이 스택에서 제거되고 현재 스택에서 그 아래에 있는 컨텍스트에 제어가 도달합니다.
+**큐(queue)** 는 양쪽이 모두 열려있는 파이프를 떠올리면 됩니다. 종류에 따라 양쪽 모두 입력과 출력이 가능한 큐도 있으나 보통은 한쪽은 입력만, 다른 한쪽은 출력만을 담당하는 구조를 말합니다. `a, b, c, d`를 저장했다면 꺼낼 때도 역시 `a, b, c, d`의 순서로 출력이 됩니다.
 
 ---
 
-아래 코드 예제를 통해 이를 이해해 보겠습니다.
+## 실행 컨텍스트란?
+
+실행 컨텍스트(Execution context)는 실행할 코드에 제공할 환경 정보들을 모아놓은 객체로, 자바스크립트의 동적 언어로서의 성격을 가장 잘 파악할 수 있는 개념입니다.
+
+> 자바스크립트는 어떤 실행 컨텍스트가 활성화되는 시점에 선언된 변수를 위로 끌어올리고(호이스팅) 외부 환경 정보를 구성하고, `this`값을 설정하는 등의 동작을 수행하는데, 이로인해 다른언어에서는 발견할 수 없는 특이한 현상들이 발생합니다.
 
 ```javascript
-let a = "안녕하세요!";
-function first() {
-  console.log("첫 번째 함수 내부");
-  second();
-  console.log("다시 첫 번째 함수 내부");
-}
-function second() {
-  console.log("두 번째 함수 내부");
-}
-first();
-console.log("글로벌 실행 컨텍스트 내부");
-```
+// 실행 컨텍스트와 콜 스택
+var x = "xxx";
 
-![](https://velog.velcdn.com/images/kato/post/77422841-5938-467b-b9cb-ef88b2ca1037/image.webp)
-
-위의 코드가 브라우저에 로드되면 **Javascript엔진**은 전역 실행 컨텍스트를 생성하고 이를 현재 실행 스택으로 푸시합니다. 첫 번째`first()`호출되면 Javascript 엔진은 해당 함수에 대한 새 실행 컨텍스트를 생성하고 이를 현재 실행 스택의 맨 위로 푸시합니다.
-
-`second()`함수 내에서 함수가 호출 되면 `first()`Javascript 엔진은 해당 함수에 대한 새 실행 컨텍스트를 생성하고 이를 현재 실행 스택의 맨 위로 푸시합니다. 함수가 완료 되면 `second()`실행 컨텍스트가 현재 스택에서 제거되고 컨트롤은 그 아래의 실행 컨텍스트, 즉 함수 `first()`실행 컨텍스트에 도달합니다.
-
-완료되면 `first()`실행 스택이 스택에서 제거되고 제어가 전역 실행 컨텍스트에 도달합니다. 모든 코드가 실행되면 JavaScript 엔진은 현재 스택에서 전역 실행 컨텍스트를 제거합니다.
-
-#### **실행 컨텍스트는 어떻게 생성됩니까?**
-
-지금까지 JavaScript 엔진이 실행 컨텍스트를 관리하는 방법을 살펴보았다. 이제 JavaScript 엔진이 실행 컨텍스트를 생성하는 방법을 알아보자.
-
-실행 컨텍스트는 1) 생성 단계 와 2) 실행 단계의 두 단계로 생성됩니다.
-
-**The Creation Phase**
-실행 컨텍스트는 생성 단계에서 생성됩니다. 생성 단계에서 다음과 같은 일이 발생합니다.
-
-1. LexicalEnvironment 구성 요소가 생성됩니다.
-2. VariableEnvironment 컴포넌트가 생성됩니다.
-
-따라서 실행 컨텍스트는 개념적으로 다음과 같이 나타낼 수 있습니다.
-
-```
-ExecutionContext = {
-  LexicalEnvironment = <ref. LexicalEnvironment in memory>,
-  VariableEnvironment = <ref. VariableEnvironment in memory>,
-}
-```
-
-**Lexical Environment**
-공식 ES6 문서는 Lexical Environment를 다음과 같이 정의합니다.
-
-> 어휘 환경은 ECMAScript 코드의 어휘 중첩 구조를 기반으로 특정 변수 및 함수에 대한 식별자 의 연결을 정의하는 데 사용되는 사양 유형입니다 . 어휘 환경은 환경 레코드와 외부 어휘 환경 에 대한 null 참조로 구성됩니다 .
-
-간단히 말해서 어휘 환경은 식별자-변수 매핑을 보유하는 구조입니다 . (여기서 식별자는 변수/함수의 이름을 의미하며, 변수는 실제 객체[함수 객체 및 배열 객체 포함] 또는 기본 값에 대한 참조)입니다.
-
-예를 들어 다음 스니펫을 고려하십시오.
-
-```javascript
-let a = 20;
-let b = 40;
 function foo() {
-  console.log("bar");
-}
-```
+  var y = "yyy";
 
-따라서 위 스니펫의 어휘 환경은 다음과 같습니다.
-
-```javascript
-lexicalEnvironment = {
-  a: 20,
-  b: 40,
-  foo: <ref. foo function>
-}
-```
-
-각 어휘 환경에는 세 가지 구성 요소가 있습니다.
-
-1. Environment Record
-2. Reference to the outer environment,
-3. This binding.
-
-## **Environment Record**
-
-환경 레코드는 어휘 환경 내에 변수 및 함수 선언이 저장되는 장소입니다.
-
-또한 두 가지 유형의 환경 레코드가 있습니다 .
-
-- **Declarative environment record**
-  이름에서 알 수 있듯이 변수 및 함수 선언을 저장합니다. 함수 코드의 어휘 환경에는 선언적 환경 레코드가 포함되어 있습니다.
-- **Object environment record**
-  전역 코드에 대한 어휘 환경에는 객관적인 환경 레코드가 포함되어 있습니다. 변수 및 함수 선언과 별도로 개체 환경 레코드는 전역 바인딩 개체(브라우저의 창 개체)도 저장합니다. 따라서 바인딩 개체의 각 속성(브라우저의 경우 브라우저가 창 개체에 제공하는 속성 및 메서드 포함)에 대해 레코드에 새 항목이 생성됩니다.
-
-- **Note**
-  함수 코드 의 경우 환경 레코드에는arguments 함수에 전달된 인덱스와 인수 사이의 매핑과 함수에 전달된 인수의 길이(숫자)를 포함하는 개체 도 포함됩니다 . 예를 들어 아래 함수의 인수 객체는 다음과 같습니다.
-
-```javascript
-function foo(a, b) {
-  var c = a + b;
-}
-foo(2, 3);
-// argument object
-Arguments: {0: 2, 1: 3, length: 2},
-```
-
-## Reference to the Outer Environment
-
-외부 환경에 대한 참조는 외부 어휘 환경에 액세스할 수 있음을 의미합니다. 즉, JavaScript 엔진은 현재 어휘 환경에서 변수를 찾을 수 없는 경우 외부 환경 내부에서 변수를 찾을 수 있습니다.
-
-## This binding.
-
-이 구성 요소에서 의 값이 this결정되거나 설정됩니다.
-
-전역 실행 컨텍스트에서 값은 this전역 개체를 나타냅니다. (브라우저에서는 thisWindow 객체를 가리킴).
-
-함수 실행 컨텍스트에서 값은 this함수가 호출되는 방식에 따라 다릅니다. 객체 참조에 의해 호출되면 의 값이 this해당 객체로 설정되고, 그렇지 않으면 의 값이 전역 객체 또는 (엄격 모드에서) this로 설정됩니다 . undefined예를 들어:
-
-```javascript
-const person = {
-  name: "peter",
-  birthYear: 1994,
-  calcAge: function () {
-    console.log(2018 - this.birthYear);
-  },
-};
-person.calcAge();
-// 'calcAge'가 //'person' 개체 참조로 호출되었기 때문에 'this'는 'person'을 참조합니다.
-constcalculateAge = person.calcAge;
-calculateAge();
-// 'this'는 개체 참조가 제공되지 않았기 때문에 전역 창 개체를 참조합니다.
-```
-
-추상적으로 어휘 환경은 의사 코드에서 다음과 같이 보입니다.
-
-```javascript
-GlobalExectionContext = {
-  LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Object",
-      // 식별자 바인딩은 여기로 이동
-     }
-    outer: <null>,
-    this: <global object>
+  function bar() {
+    var z = "zzz";
+    console.log(x + y + z);
   }
+  bar();
 }
-FunctionExectionContext = {
-  LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Declarative",
-      // 식별자 바인딩은 여기로 이동
-     }
-    outer: <Global or outer function environment reference>,
-    this: <depends on how function is called>
-  }
-}
+foo();
 ```
 
-## Variable Environment:
+![](https://velog.velcdn.com/images/kato/post/41bcafba-c533-4929-90b8-3027bfb3aea0/image.png)
 
-또한 EnvironmentRecord가 이 실행 컨텍스트 내에서 VariableStatements 에 의해 생성된 바인딩을 보유하는 어휘 환경이기도 합니다 .
+1. 컨트롤이 실행 가능한 코드로 이동하면, 논리적 스택 구조를 가지는 새로운 실행컨텍스트 스택이 생성된다. 스택은 LIFO(Last In First Out, 후입 선출)의 구조를가지는 나열 구조이다.
 
-위에서 설명한 것처럼 환경 변수도 어휘 환경이므로 위에서 정의한 어휘 환경의 모든 속성과 구성 요소를 갖습니다.
+2. 전역 코드(Global code)로 컨트롤이 진입하면, 전역 실행 컨텍스트가 생성되고 실행 컨텍스트 스택에 쌓인다. 전역 실행 컨텍스트는 애플리케이션이 종료될 때(웹페이지에서 나가거나 브라우저를 닫을 때)까지 유지된다.
 
-ES6에서 LexicalEnvironment 구성 요소와 VariableEnvironment 구성 요소의 한 가지 차이점은 전자는 함수 선언 및 변수( let 및 const) 바인딩을 저장하는 데 사용되고 후자는 변수 (var)바인딩만 저장하는 데 사용된다는 것입니다.
+3. 함수를 호출하면 해당 함수의 실행 컨텍스트가 생성되며 직전에 실행된 코드 블록의 실행 컨텍스트 위에 쌓인다.
 
-#### Execution Phase
+4. 함수 실행이 끝나면 해당 함수의 실행 컨텍스트를 파기하고 직전의 실행 컨텍스트에 컨트롤을 반환한다.
 
-이 단계에서 모든 변수에 대한 할당이 완료되고 코드가 최종적으로 실행됩니다.
+**이처럼 함수들이 순차적으로 실행과 중단을 반복하여 콜 스택의 움직임을 알 수 있다.**
 
-#### Example
+## 실행 컨텍스트, 왜 필요할까?
 
-위의 개념을 이해하기 위해 몇 가지 예를 살펴보겠습니다.
+> 소프트웨어 구현 전략 중에 하나는 코드를 여러 조각(functions, modules, packages 등등)으로 나누는 것입니다.
+> 이렇게 분리하는 이유는 단 하나, 프로그램의 복잡성을 분리하고 관리하기 위함입니다.
+> 이제 코드를 작성하는 입장이 아닌 코드를 해석하는 자바스크립트 엔진 관점에서 생각해봅니다.
+> 코드 해석의 복잡성을 관리하기 위해 코드의 영역을 분리하여 위와 같은 전략을 사용할 수 있는 데 그게 바로 실행 컨텍스트(Execution Context) 입니다.
+> functions, modules, packages가 코드 작성의 복잡함을 관리할 수 있게 해주는 것 처럼, 실행 컨텍스트도 자바스크립트 엔진이 코드 해석과 실행의 복잡성을 관리할 수 있도록 해주는 것입니다.
 
-```javascript
-let a = 20;
-const b = 30;
-var c;
-function multiply(e, f) {
-  var g = 20;
-  return e * f * g;
-}
-c = multiply(20, 30);
-```
+---
 
-위의 코드가 실행되면 JavaScript 엔진은 전역 코드를 실행하기 위해 전역 실행 컨텍스트를 생성합니다. 따라서 전역 실행 컨텍스트는 생성 단계에서 다음과 같이 표시됩니다.
+## 실행 컨텍스트는 어떻게 실행될까?
 
-```javascript
-GlobalExectionContext = {
-  LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Object",
-      // 식별자 바인딩은 여기
-      a: < uninitialized >,
-      b: < uninitialized >,
-      multiply: < func >
-    }
-    outer: <null>,
-    ThisBinding: <Global Object>
-  },
-  VariableEnvironment: {
-    EnvironmentRecord: {
-      Type: "Object",
-      // 식별자 바인딩은 여기
-      c: undefined,
-    }
-    outer: <null>,
-    ThisBinding: <Global Object>
-  }
-}
-```
+지금까지 자바스키립트 엔진이 어떻게 실행 컨텍스트를 관리하는지 살펴보았고, 이제는 실행 컨텍스트가 자바스크립트 엔진으로 부터 어떻게 생성되는지 알아보겠습니다.
 
-실행 단계에서 변수 할당이 완료됩니다. 따라서 전역 실행 컨텍스트는 실행 단계에서 이와 같이 보일 것입니다.
+실행컨텍스트는 `생성 단계`와 `실행 단계`로 구분할 수 있습니다.
 
-```javascript
-GlobalExectionContext = {
-LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Object",
-      // 식별자 바인딩은 여기
-      a: 20,
-      b: 30,
-      multiply: < func >
-    }
-    outer: <null>,
-    ThisBinding: <Global Object>
-  },
-VariableEnvironment: {
-    EnvironmentRecord: {
-      Type: "Object",
-      // 식별자 바인딩은 여기
-      c: undefined,
-    }
-    outer: <null>,
-    ThisBinding: <Global Object>
-  }
-}
-```
+#### 생성단계 & 실행단계
 
-함수 호출이 multiply(20, 30)발생하면 함수 코드를 실행하기 위해 새 함수 실행 컨텍스트가 생성됩니다. 따라서 함수 실행 컨텍스트는 생성 단계에서 다음과 같이 표시됩니다.
+자바스크립트 엔진은 2단계로 실행 컨텍스트를 생성하고 각 단계마다의 역할을 가지고 있습니다.
 
-```javascript
-FunctionExectionContext = {
-LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Declarative",
-      // 식별자 바인딩은 여기에 갑니다.
-      Arguments: {0: 20, 1: 30, length: 2},
-    },
-    outer: <GlobalLexicalEnvironment>,
-    ThisBinding: <Global Object or undefined> ,
-  },
-VariableEnvironment: {
-    EnvironmentRecord: {
-      Type: "Declarative",
-      // 식별자 바인딩은 여기
-      g: undefined
-    },
-    outer: <GlobalLexicalEnvironment>,
-    ThisBinding: <Global Object or undefined>
-  }
-}
-```
+1. 생성단계 (Creation phase)
+2. 실행단계 (Execution phase)
 
-그런 다음 실행 컨텍스트는 함수 내부의 변수에 대한 할당이 완료되었음을 의미하는 실행 단계를 거칩니다. 따라서 함수 실행 컨텍스트는 실행 단계에서 다음과 같이 표시됩니다.
+#### 생성단계 (Creation phase)
 
-```javascript
-FunctionExectionContext = {
-LexicalEnvironment: {
-    EnvironmentRecord: {
-      Type: "Declarative",
-      // 식별자 바인딩은 여기에 갑니다.
-      Arguments: {0: 20, 1: 30, length: 2},
-    },
-    outer: <GlobalLexicalEnvironment>,
-    ThisBinding: <Global Object or undefined> ,
-  },
-VariableEnvironment: {
-    EnvironmentRecord: {
-      Type: "Declarative",
-      // 식별자 바인딩은 여기
-      g: 20
-    },
-    outer: <GlobalLexicalEnvironment>,
-    ThisBinding: <Global Object or undefined>
-  }
-}
-```
+생성단계는 JS엔진이 함수를 실행은 하지 않고 호출을 하는 단계입니다. 이때 JS엔진이 실행 컨텍스트를 생성하면서 아래와 같은 작업을 합니다.
 
-함수가 완료된 후 반환된 값은 내부에 저장됩니다. 따라서 전역 어휘 환경이 업데이트됩니다. 그런 다음 전역 코드가 완료되고 프로그램이 종료됩니다.
+1. 함수와 변수를 위한 메모리 공간 확보
+   GEC의 경우, 글로벌 변수 생성(브라우저는 `window` 객체, Node.js는 `global` 객체)
+   FEC의 경우, `arguments` 변수 생성
+2. 스코프 체인(scope chain) 생성
+3. this 값: 스코프 체인 생성 후 this의 값을 결정
+
+아래 그림을 보면 (GEC의 경우) 생성단계에서 글로벌 변수와 `this`를 할당합니다. 여기서 주의깊게 봐야할 것은 선언식 함수는 메모리에 배치하고 변수 선언에는 기본값 `undefined`를 할당하는 것입니다.
+![](https://velog.velcdn.com/images/kato/post/b5ba729b-9a97-4c88-991e-f6a5ca40ae6f/image.png)
+
+#### 실행단계 (Execution phase)
+
+실행단계가 되면 JS엔진은 한 줄식 코드를 실행(런타임) 하는데. 이 단계에서 변수에 값을 할당하고 함수 호출을 실행합니다.
+![](https://velog.velcdn.com/images/kato/post/3ad861a7-bbc8-40e8-9974-e5c3495798f6/image.png)
+
+---
+
+## 실행 컨텍스트의 종류
+
+이 처럼 코드 해석과 실행의 복잡성을 관리하기 위해 3가지의 실행 컨텍스트가 존재합니다.
+
+#### Global Execution Context (GEC)
+
+글로벌 실행 컨텍스트(GEC)는 브라우저 혹은 (Node.js와 같은) 런타임에서 처음 파일을 로드하여 해석을 시작할 때 생성되며, JS 코드를 실행하는 기본적인 실행 컨텍스트입니다. 함수나 오브젝트 같은 코드들은 모두 GEC 내부에서 실행됩니다.
+
+또한 자바스크립트 엔진은 싱글 쓰레드이기 때문에 하나의 글로벌 환경에서만 JS 코드를 실행할 수 있습니다. 따라서 GEC가 두개 이상 생성될 순 없습니다.
+
+#### Functional Execution Context (FEC)
+
+함수 실행 컨텍스트(FEC)는 JS엔진이 함수 호출될 때 마다 생성되는 컨텍스트로, 각각의 함수는 자체 실행 컨텍스트를 가지기 때문에 여러 개가 존재할 수 있습니다.
+
+#### ⚠️Eval Functional Execution Context⚠️
+
+`eval` 함수 내의 실행 컨텍스트를 의미합니다.
+
+> 약간의 TMI
+> eval 함수는 문자열로된 자바스크립트 코드를 실행하게 해주는 함수로 JS 인터프리터가 바로 코드를 실행해주는 뭔가 위험한(?) 함수입니다.
+> [더 알아보기](https://developer.mozilla.org/ko/docs/Web/JavaScript/Reference/Global_Objects/eval)
+
+#### 실행 컨텍스트 스택 (Execution Context Stack)
+
+실행 컨텍스트이란 스택(Stack, Last in First out) 자료구조를 이용하여 스크립트의 생명주기 동안 생성된 모든 실행 컨텍스트를 저장하는 하는 스택입니다. 일종의 Call Stack 이죠.
+
+기본적으로 GEC가 스택에 맨 아래에 존재하며, GEC의 코드를 실행하는 동안 함수가 호출 되면 해당 함수에 대한 FEC가 생성되면서 실행 컨텍스트 스택 위에 푸시(push)되며, JS엔진은 스택의 맨 위에 있는 함수를 실행합니다. 푸시된 컨텍스트의 모든 코드가 실행이 되면 해당 컨텍스트를 팝(pop) 하고, 그 아래에 있는 함수를 이어서 실행합니다.
+![](https://velog.velcdn.com/images/kato/post/da2ad5fb-e717-4348-855f-874c1ed641b9/image.gif)
+
+---
